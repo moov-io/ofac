@@ -37,6 +37,8 @@ var (
 	flagLogFormat = flag.String("log.format", "", "Format for log lines (Options: json, plain")
 
 	dataRefreshInterval = 12 * time.Hour
+
+	dbType = os.Getenv("DATABASE_TYPE")
 )
 
 func main() {
@@ -66,7 +68,7 @@ func main() {
 	}()
 
 	// Setup database connection
-	db, err := database.New(logger, os.Getenv("DATABASE_TYPE"))
+	db, err := database.New(logger, dbType)
 	if err != nil {
 		logger.Log("main", fmt.Sprintf("database problem: %v", err))
 		os.Exit(1)
@@ -132,7 +134,7 @@ func main() {
 	defer adminServer.Shutdown()
 
 	// Setup download repository
-	downloadRepo := &sqliteDownloadRepository{db, logger}
+	downloadRepo := &genericSQLDownloadRepository{db, logger}
 	defer downloadRepo.close()
 
 	searcher := &searcher{
@@ -166,16 +168,18 @@ func main() {
 		)
 	}
 
+	logger.Log("main", fmt.Sprintf("Setting up default database connection to %s", dbType))
+
 	// Setup Watch and Webhook database wrapper
-	watchRepo := &sqliteWatchRepository{db, logger}
+	watchRepo := &genericSQLWatchRepository{db, logger}
 	defer watchRepo.close()
-	webhookRepo := &sqliteWebhookRepository{db}
+	webhookRepo := &genericSQLWebhookRepository{db}
 	defer webhookRepo.close()
 
 	// Setup company / customer repositories
-	companyRepo := &sqliteCompanyRepository{db, logger}
+	companyRepo := &genericSQLCompanyRepository{db, logger}
 	defer companyRepo.close()
-	custRepo := &sqliteCustomerRepository{db, logger}
+	custRepo := &genericSQLCustomerRepository{db, logger}
 	defer custRepo.close()
 
 	// Setup periodic download and re-search

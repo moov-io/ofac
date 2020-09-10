@@ -56,11 +56,18 @@ var (
 	}
 )
 
-func createTestCustomerRepository(t *testing.T) *sqliteCustomerRepository {
+func createTestCustomerRepository(t *testing.T) *genericSQLCustomerRepository {
 	t.Helper()
 
-	db := database.CreateTestSqliteDB(t)
-	return &sqliteCustomerRepository{db.DB, log.NewNopLogger()}
+	switch dbType {
+	case `postgres`:
+		db := database.CreateTestPostgresDB(t)
+		return &genericSQLCustomerRepository{db.DB, log.NewNopLogger()}
+	default:
+		db := database.CreateTestSqliteDB(t)
+		return &genericSQLCustomerRepository{db.DB, log.NewNopLogger()}
+	}
+
 }
 
 func TestCustomers__id(t *testing.T) {
@@ -116,7 +123,7 @@ func TestCustomer_getById(t *testing.T) {
 func TestCustomer_get(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/ofac/customers/306", nil)
 		req.Header.Set("x-user-id", "test")
@@ -154,18 +161,23 @@ func TestCustomer_get(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	//Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_EmptyHTTP(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/ofac/customers/foo", nil)
 
@@ -180,18 +192,24 @@ func TestCustomer_EmptyHTTP(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_addWatch(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		body := strings.NewReader(`{"webhook": "https://moov.io", "authToken": "foo"}`)
 		req := httptest.NewRequest("POST", "/ofac/customers/foo/watch", body)
@@ -221,12 +239,18 @@ func TestCustomer_addWatch(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_addWatchNoBody(t *testing.T) {
@@ -250,7 +274,7 @@ func TestCustomer_addWatchNoBody(t *testing.T) {
 func TestCustomer_addWatchMissingAuthToken(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		watchRepo := createTestWatchRepository(t)
 		defer watchRepo.close()
 
@@ -275,18 +299,24 @@ func TestCustomer_addWatchMissingAuthToken(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_addNameWatch(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		body := strings.NewReader(`{"webhook": "https://moov.io", "authToken": "foo"}`)
 		req := httptest.NewRequest("POST", "/ofac/customers/watch?name=foo", body)
@@ -317,18 +347,24 @@ func TestCustomer_addNameWatch(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_addCustomerNameWatchNoBody(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/ofac/customers/watch?name=foo", nil)
 		req.Header.Set("x-user-id", "test")
@@ -363,18 +399,24 @@ func TestCustomer_addCustomerNameWatchNoBody(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_updateUnsafe(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		body := strings.NewReader(`{"status": "unsafe"}`)
 		req := httptest.NewRequest("PUT", "/ofac/customers/foo", body)
@@ -396,18 +438,24 @@ func TestCustomer_updateUnsafe(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_updateException(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		body := strings.NewReader(`{"status": "exception"}`)
 		req := httptest.NewRequest("PUT", "/ofac/customers/foo", body)
@@ -429,18 +477,24 @@ func TestCustomer_updateException(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_updateUnknown(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		body := strings.NewReader(`{"status": "unknown"}`) // has status, but not blocked or unblocked
 		req := httptest.NewRequest("PUT", "/ofac/customers/foo", body)
@@ -462,18 +516,24 @@ func TestCustomer_updateUnknown(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_updateNoUserId(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("PUT", "/ofac/customers/foo", nil)
 
@@ -493,18 +553,24 @@ func TestCustomer_updateNoUserId(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_updateNoBody(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("PUT", "/ofac/customers/foo", nil)
 		req.Header.Set("x-user-id", "test")
@@ -525,18 +591,24 @@ func TestCustomer_updateNoBody(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_removeWatch(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("DELETE", "/ofac/customers/foo/watch/watch-id", nil)
 		req.Header.Set("x-user-id", "test")
@@ -557,18 +629,24 @@ func TestCustomer_removeWatch(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomer_removeNameWatch(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("DELETE", "/ofac/customers/watch/foo", nil)
 		req.Header.Set("x-user-id", "test")
@@ -590,18 +668,24 @@ func TestCustomer_removeNameWatch(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
 
 func TestCustomerRepository(t *testing.T) {
 	t.Parallel()
 
-	check := func(t *testing.T, repo *sqliteCustomerRepository) {
+	check := func(t *testing.T, repo *genericSQLCustomerRepository) {
 		customerID, userID := base.ID(), base.ID()
 
 		status, err := repo.getCustomerStatus(customerID)
@@ -668,10 +752,16 @@ func TestCustomerRepository(t *testing.T) {
 	// SQLite tests
 	sqliteDB := database.CreateTestSqliteDB(t)
 	defer sqliteDB.Close()
-	check(t, &sqliteCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{sqliteDB.DB, log.NewNopLogger()})
 
 	// MySQL tests
 	mysqlDB := database.CreateTestMySQLDB(t)
 	defer mysqlDB.Close()
-	check(t, &sqliteCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+	check(t, &genericSQLCustomerRepository{mysqlDB.DB, log.NewNopLogger()})
+
+	// Postgres tests
+	postgres := database.CreateTestPostgresDB(t)
+	dbType = `postgres`
+	defer postgres.Close()
+	check(t, &genericSQLCustomerRepository{postgres.DB, log.NewNopLogger()})
 }
